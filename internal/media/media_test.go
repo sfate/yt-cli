@@ -121,21 +121,12 @@ func TestPreparePlayback(t *testing.T) {
 		!strings.Contains(string(conf), "ESC quit") {
 		t.Fatalf("missing bindings: %s, %v", conf, err)
 	}
-	var scriptPath string
-	for _, arg := range cmd.Args {
-		if strings.HasPrefix(arg, "--script=") {
-			scriptPath = strings.TrimPrefix(arg, "--script=")
-		}
-	}
-	script, err := os.ReadFile(scriptPath)
-	if err != nil || !strings.Contains(string(script), "term-status-msg") ||
-		!strings.Contains(string(script), "string.rep(\"=\"") {
-		t.Fatalf("missing dynamic terminal progress bar: %s, %v", script, err)
-	}
 	args := strings.Join(cmd.Args, "\n")
 	if !strings.Contains(args, "--vo=tct") ||
-		!strings.Contains(args, "--vo-tct-height=29") ||
-		!strings.Contains(args, "--term-status-msg=[----------] 0:00 / 0:00") ||
+		!strings.Contains(args, "--vo-tct-height=28") ||
+		!strings.Contains(args, "--term-osd=force") ||
+		!strings.Contains(args, "--term-status-msg=${time-pos} / ${duration}") ||
+		!strings.Contains(args, "--term-osd-bar=yes") ||
 		!strings.Contains(args, "--ytdl-raw-options=cookies-from-browser=%18%"+browser) {
 		t.Fatalf("missing renderer or incorrect byte-length escaping: %s", args)
 	}
