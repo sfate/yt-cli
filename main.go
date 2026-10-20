@@ -31,7 +31,7 @@ func parseOptions(args []string, out io.Writer) (options, error) {
 	flags.IntVar(&o.limit, "limit", 25, "maximum results/playlist items (1–500)")
 	flags.BoolVar(&o.doctor, "doctor", false, "check runtime dependencies")
 	flags.Usage = func() {
-		fmt.Fprintln(out, "Usage: yt-cli [options] [search terms or YouTube URL]\n\nOptions must precede the search query.")
+		_, _ = fmt.Fprintln(out, "Usage: yt-cli [options] [search terms or YouTube URL]\n\nOptions must precede the search query.")
 		flags.PrintDefaults()
 	}
 	if err := flags.Parse(args); err != nil {

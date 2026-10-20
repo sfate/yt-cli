@@ -4,18 +4,25 @@ A keyboard-driven YouTube player for a small tmux pane. Search, queue videos,
 and hand the whole pane to mpv for playback. Alacritty is the baseline: video
 uses true-color Unicode half-blocks, which also work in iTerm2.
 
-## Run
+## Usage
 
 Requires Go 1.25+ to build, mpv with `tct` output, and a current yt-dlp.
 On macOS:
 
 ```sh
 brew install mpv yt-dlp
-go build -o yt-cli .
-./yt-cli --doctor
-./yt-cli
-./yt-cli ambient live
-./yt-cli 'https://www.youtube.com/playlist?list=YOUR_PLAYLIST'
+make build                          # Build bin/yt-cli
+make doctor                         # Check mpv and yt-dlp
+make run                            # Launch the TUI
+make run ARGS='ambient live'         # Start with a search
+make run ARGS='--limit 100 ambient'  # Set the result limit
+```
+
+You can also run the built binary directly:
+
+```sh
+./bin/yt-cli
+./bin/yt-cli 'https://www.youtube.com/playlist?list=YOUR_PLAYLIST'
 ```
 
 Run these inside the tmux pane where you want the video. No graphics
@@ -24,7 +31,7 @@ its `terminal-features` for your outer terminal with the `RGB` feature.
 
 The app is a single Go binary; Go is not needed to run a built binary.
 mpv and yt-dlp must be available on `PATH`. Place options before search terms
-or URLs, for example `./yt-cli --limit 100 ambient live`.
+or URLs, for example `./bin/yt-cli --limit 100 ambient live`.
 
 ## Shortcuts
 
@@ -61,8 +68,8 @@ The default extraction limit is 25; use `--limit 100` for larger playlists
 Sign in to YouTube in your normal browser, then explicitly opt in:
 
 ```sh
-./yt-cli --browser firefox
-./yt-cli --browser 'chrome:Profile 1'
+./bin/yt-cli --browser firefox
+./bin/yt-cli --browser 'chrome:Profile 1'
 ```
 
 This asks yt-dlp to read that browser's cookies for both search and playback.
@@ -93,11 +100,3 @@ Pane resizing during playback is delegated to mpv and needs manual validation.
 References: [mpv terminal output](https://mpv.io/manual/master/#video-output-drivers),
 [yt-dlp](https://github.com/yt-dlp/yt-dlp),
 [YouTube authentication](https://github.com/yt-dlp/yt-dlp/wiki/Extractors#logging-in-with-oauth).
-
-## Development
-
-```sh
-go test -race ./...
-go vet ./...
-go build -o yt-cli .
-```
