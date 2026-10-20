@@ -192,7 +192,7 @@ func PreparePlayback(ctx context.Context, entries []Video, browser string, termi
 		"--panscan=1",
 		"--term-osd=force", "--term-status-msg=${time-pos} / ${duration}",
 		"--term-osd-bar=yes",
-		"--osd-level=0", "--osc=no", "--ytdl=yes",
+		"--video-osd=no", "--osc=no", "--ytdl=yes",
 		"--ytdl-format=bestvideo[height<=360]+bestaudio/best[height<=360]/best",
 		"--playlist=" + playlistPath,
 	}

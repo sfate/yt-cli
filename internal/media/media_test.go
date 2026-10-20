@@ -131,6 +131,8 @@ func TestPreparePlayback(t *testing.T) {
 		!strings.Contains(args, "--term-osd=force") ||
 		!strings.Contains(args, "--term-status-msg=${time-pos} / ${duration}") ||
 		!strings.Contains(args, "--term-osd-bar=yes") ||
+		!strings.Contains(args, "--video-osd=no") ||
+		strings.Contains(args, "--osd-level=0") ||
 		!strings.Contains(args, "--ytdl-raw-options=cookies-from-browser=%18%"+browser) {
 		t.Fatalf("missing renderer or incorrect byte-length escaping: %s", args)
 	}
