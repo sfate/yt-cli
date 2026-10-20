@@ -153,8 +153,33 @@ q quit
 ESC quit
 `
 
+const progressScript = `local function timestamp(seconds)
+    seconds = math.max(0, math.floor(seconds or 0))
+    return string.format("%d:%02d", math.floor(seconds / 60), seconds % 60)
+end
+
+local function update_status()
+    local duration = mp.get_property_number("duration")
+    local position = mp.get_property_number("time-pos", 0)
+    if not duration or duration <= 0 then
+        mp.set_property("term-status-msg", "[ live ]")
+        return
+    end
+
+    local columns = mp.get_property_number("term-size/w", 80)
+    local times = string.format(" %s / %s", timestamp(position), timestamp(duration))
+    local width = math.max(1, math.min(32, columns - #times - 4))
+    local filled = math.min(width, math.floor(math.max(0, position / duration) * width))
+    local bar = string.rep("=", filled) .. string.rep("-", width - filled)
+    mp.set_property("term-status-msg", string.format("[%s]%s", bar, times))
+end
+
+mp.register_event("file-loaded", update_status)
+mp.add_periodic_timer(0.5, update_status)
+`
+
 // PreparePlayback creates private files; the caller must clean up after mpv exits.
-func PreparePlayback(ctx context.Context, entries []Video, browser string) (*exec.Cmd, func(), error) {
+func PreparePlayback(ctx context.Context, entries []Video, browser string, terminalRows int) (*exec.Cmd, func(), error) {
 	if len(entries) == 0 {
 		return nil, nil, errors.New("nothing to play")
 	}
@@ -171,16 +196,23 @@ func PreparePlayback(ctx context.Context, entries []Video, browser string) (*exe
 	}
 	cleanup := func() { _ = os.RemoveAll(dir) }
 	inputPath, playlistPath := filepath.Join(dir, "input.conf"), filepath.Join(dir, "playlist.m3u")
-	for path, data := range map[string]string{inputPath: bindings, playlistPath: playlist.String()} {
+	progressPath := filepath.Join(dir, "progress.lua")
+	for path, data := range map[string]string{
+		inputPath: bindings, playlistPath: playlist.String(), progressPath: progressScript,
+	} {
 		if err := os.WriteFile(path, []byte(data), 0600); err != nil {
 			cleanup()
 			return nil, nil, err
 		}
 	}
+	videoRows := max(1, terminalRows-1)
 	args := []string{
-		"--no-config", "--really-quiet", "--vo=tct", "--vo-tct-algo=half-blocks",
+		"--no-config", "--vo=tct", "--vo-tct-algo=half-blocks",
 		"--vo-tct-256=no", "--profile=sw-fast", "--input-terminal=yes",
 		"--input-default-bindings=no", "--input-conf=" + inputPath,
+		fmt.Sprintf("--vo-tct-height=%d", videoRows),
+		"--term-status-msg=[----------] 0:00 / 0:00", "--msg-level=all=error",
+		"--script=" + progressPath,
 		"--osd-level=0", "--osc=no", "--ytdl=yes",
 		"--ytdl-format=bestvideo[height<=360]+bestaudio/best[height<=360]/best",
 		"--playlist=" + playlistPath,

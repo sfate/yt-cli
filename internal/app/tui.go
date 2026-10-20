@@ -5,11 +5,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/charmbracelet/x/term"
 	"github.com/sfate/yt-cli/internal/media"
 )
 
@@ -107,7 +109,11 @@ func (m *model) play(entries []media.Video) tea.Cmd {
 		m.status = "Nothing to play. Search or add videos to the queue first."
 		return nil
 	}
-	cmd, cleanup, err := media.PreparePlayback(m.ctx, entries, m.options.Browser)
+	_, terminalRows, sizeErr := term.GetSize(os.Stdout.Fd())
+	if sizeErr != nil {
+		terminalRows = 24
+	}
+	cmd, cleanup, err := media.PreparePlayback(m.ctx, entries, m.options.Browser, terminalRows)
 	if err != nil {
 		m.status = "Playback failed: " + media.Clean(err.Error())
 		return nil

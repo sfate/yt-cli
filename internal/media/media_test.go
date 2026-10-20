@@ -101,7 +101,7 @@ func TestSearchArgsLiteralQueryAndBrowser(t *testing.T) {
 func TestPreparePlayback(t *testing.T) {
 	entries := []Video{{URL: "https://youtu.be/abcdefghijk"}, {URL: "https://youtu.be/12345678901"}}
 	browser := "firefox:profile,é"
-	cmd, cleanup, err := PreparePlayback(context.Background(), entries, browser)
+	cmd, cleanup, err := PreparePlayback(context.Background(), entries, browser, 30)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,8 +121,21 @@ func TestPreparePlayback(t *testing.T) {
 		!strings.Contains(string(conf), "ESC quit") {
 		t.Fatalf("missing bindings: %s, %v", conf, err)
 	}
+	var scriptPath string
+	for _, arg := range cmd.Args {
+		if strings.HasPrefix(arg, "--script=") {
+			scriptPath = strings.TrimPrefix(arg, "--script=")
+		}
+	}
+	script, err := os.ReadFile(scriptPath)
+	if err != nil || !strings.Contains(string(script), "term-status-msg") ||
+		!strings.Contains(string(script), "string.rep(\"=\"") {
+		t.Fatalf("missing dynamic terminal progress bar: %s, %v", script, err)
+	}
 	args := strings.Join(cmd.Args, "\n")
 	if !strings.Contains(args, "--vo=tct") ||
+		!strings.Contains(args, "--vo-tct-height=29") ||
+		!strings.Contains(args, "--term-status-msg=[----------] 0:00 / 0:00") ||
 		!strings.Contains(args, "--ytdl-raw-options=cookies-from-browser=%18%"+browser) {
 		t.Fatalf("missing renderer or incorrect byte-length escaping: %s", args)
 	}
@@ -138,7 +151,7 @@ func TestPreparePlayback(t *testing.T) {
 
 func TestPreparePlaybackRejectsInvalidQueue(t *testing.T) {
 	for _, entries := range [][]Video{nil, {{URL: "https://youtube.com/x\nfile:///tmp/x"}}} {
-		if _, _, err := PreparePlayback(context.Background(), entries, ""); err == nil {
+		if _, _, err := PreparePlayback(context.Background(), entries, "", 24); err == nil {
 			t.Fatal("accepted empty or invalid queue")
 		}
 	}
