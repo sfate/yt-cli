@@ -92,3 +92,41 @@ func TestViewFitsSmallPane(t *testing.T) {
 		}
 	}
 }
+
+func TestSelectionClampsWhenSwitchingViews(t *testing.T) {
+	m := newModel(context.Background(), Options{Limit: 25})
+	m.results = []media.Video{{Title: "First"}, {Title: "Second"}}
+	press(m, 'j')
+	press(m, 'j')
+	if m.selected != 1 {
+		t.Fatalf("selection exceeded result bounds: %d", m.selected)
+	}
+	m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	if m.selected != 0 {
+		t.Fatalf("selection did not reset on view switch: %d", m.selected)
+	}
+	press(m, 'k')
+	if m.selected != 0 {
+		t.Fatalf("selection went below first row: %d", m.selected)
+	}
+}
+
+func TestHelpViewAndSearchPrompt(t *testing.T) {
+	m := newModel(context.Background(), Options{Limit: 25})
+	press(m, '?')
+	if !strings.Contains(m.View().Content, "PLAYBACK (video fills this pane)") {
+		t.Fatal("help view is missing playback shortcuts")
+	}
+	press(m, '?')
+	press(m, '/')
+	for _, char := range "ambient" {
+		press(m, char)
+	}
+	if m.query != "ambient" {
+		t.Fatalf("search prompt did not retain typed input: %q", m.query)
+	}
+	_, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	if cmd == nil || m.editing {
+		t.Fatal("submitting a non-empty query did not start a search")
+	}
+}

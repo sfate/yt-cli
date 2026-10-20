@@ -48,6 +48,20 @@ func TestParseSingleAndEmpty(t *testing.T) {
 	}
 }
 
+func TestParseMetadataFallbackAndValidation(t *testing.T) {
+	data := []byte(`{"entries":[{"id":"abcdefghijk","webpage_url":"https://youtu.be/abcdefghijk","title":"","channel":""},{"id":"bad_id"},{"id":"12345678901","title":"Video","uploader":"Uploader"}]}`)
+	entries, err := ParseEntries(data)
+	if err != nil || len(entries) != 2 {
+		t.Fatalf("got %v, %v", entries, err)
+	}
+	if entries[0].Title != entries[0].URL {
+		t.Fatalf("missing title did not fall back to URL: %+v", entries[0])
+	}
+	if entries[1].Channel != "Uploader" {
+		t.Fatalf("missing channel did not fall back to uploader: %+v", entries[1])
+	}
+}
+
 func TestYouTubeURL(t *testing.T) {
 	for _, target := range []string{
 		"https://youtube.com.evil.test/watch?v=x", "file:///tmp/x",
@@ -59,6 +73,15 @@ func TestYouTubeURL(t *testing.T) {
 	}
 	if !YouTubeURL("https://youtu.be/abcdefghijk") {
 		t.Fatal("rejected valid short URL")
+	}
+	for _, target := range []string{
+		"http://youtube.com/watch?v=abcdefghijk",
+		"https://m.youtube.com/watch?v=abcdefghijk",
+		"https://YOUTUBE.COM/watch?v=abcdefghijk",
+	} {
+		if !YouTubeURL(target) {
+			t.Errorf("rejected valid URL %q", target)
+		}
 	}
 }
 
@@ -143,5 +166,13 @@ func TestSearchSubprocessAndCancellation(t *testing.T) {
 	_, err = Search(ctx, "music", 25, "")
 	if !errors.Is(err, context.DeadlineExceeded) || time.Since(start) > 3*time.Second {
 		t.Fatalf("search failed to cancel promptly: %v", err)
+	}
+}
+
+func TestSearchSubprocessFailureIncludesSanitizedError(t *testing.T) {
+	fakeExecutable(t, "yt-dlp", "echo 'request failed' >&2; exit 7\n")
+	_, err := Search(context.Background(), "music", 25, "")
+	if err == nil || !strings.Contains(err.Error(), "request failed") {
+		t.Fatalf("search failure omitted yt-dlp diagnostic: %v", err)
 	}
 }
