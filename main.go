@@ -12,8 +12,9 @@ import (
 	"strings"
 	"time"
 
-	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/term"
+	"github.com/sfate/yt-cli/internal/app"
+	"github.com/sfate/yt-cli/internal/media"
 )
 
 type options struct {
@@ -71,7 +72,7 @@ func checkMPV(ctx context.Context) error {
 			return fmt.Errorf("mpv startup check canceled: %w", ctx.Err())
 		}
 		detail := ""
-		if text := strings.TrimSpace(clean(string(output))); text != "" {
+		if text := strings.TrimSpace(media.Clean(string(output))); text != "" {
 			detail = "\nmpv output: " + text
 		}
 		return fmt.Errorf("mpv startup check failed (%s): %w%s\nTry running %q --no-config --vo=help directly", cmd.Path, err, detail, cmd.Path)
@@ -102,10 +103,7 @@ func run(args []string) error {
 	if os.Getenv("COLORTERM") == "" {
 		_ = os.Setenv("COLORTERM", "truecolor")
 	}
-	m := newModel(ctx, o)
-	defer m.cancelSearch()
-	_, err = tea.NewProgram(m).Run()
-	return err
+	return app.Run(ctx, app.Options{Browser: o.browser, Limit: o.limit, Query: o.query})
 }
 
 func main() {

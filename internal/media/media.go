@@ -1,4 +1,4 @@
-package main
+package media
 
 import (
 	"bytes"
@@ -17,7 +17,7 @@ import (
 	"unicode"
 )
 
-type video struct {
+type Video struct {
 	Title   string
 	Channel string
 	URL     string
@@ -33,7 +33,7 @@ type rawVideo struct {
 	Entries    []*rawVideo `json:"entries"`
 }
 
-func clean(s string) string {
+func Clean(s string) string {
 	return strings.Map(func(r rune) rune {
 		if !unicode.IsPrint(r) {
 			return -1
@@ -42,7 +42,7 @@ func clean(s string) string {
 	}, s)
 }
 
-func youtubeURL(s string) bool {
+func YouTubeURL(s string) bool {
 	u, err := url.Parse(s)
 	if err != nil || u.User != nil || (u.Scheme != "https" && u.Scheme != "http") {
 		return false
@@ -58,7 +58,7 @@ func youtubeURL(s string) bool {
 
 var videoID = regexp.MustCompile(`^[A-Za-z0-9_-]{11}$`)
 
-func parseEntries(data []byte) ([]video, error) {
+func ParseEntries(data []byte) ([]Video, error) {
 	var doc *rawVideo
 	if err := json.Unmarshal(data, &doc); err != nil {
 		return nil, fmt.Errorf("reading yt-dlp results: %w", err)
@@ -70,14 +70,14 @@ func parseEntries(data []byte) ([]video, error) {
 	if entries == nil {
 		entries = []*rawVideo{doc}
 	}
-	var result []video
+	var result []Video
 	for _, entry := range entries {
 		if entry == nil {
 			continue
 		}
 		var target string
 		for _, candidate := range []string{entry.WebpageURL, entry.URL} {
-			if youtubeURL(candidate) {
+			if YouTubeURL(candidate) {
 				target = candidate
 				break
 			}
@@ -96,29 +96,29 @@ func parseEntries(data []byte) ([]video, error) {
 		if channel == "" {
 			channel = entry.Uploader
 		}
-		result = append(result, video{Title: clean(title), Channel: clean(channel), URL: target})
+		result = append(result, Video{Title: Clean(title), Channel: Clean(channel), URL: target})
 	}
 	return result, nil
 }
 
-func searchArgs(query string, o options) []string {
+func SearchArgs(query string, limit int, browser string) []string {
 	target := query
-	if !youtubeURL(query) {
-		target = fmt.Sprintf("ytsearch%d:%s", o.limit, query)
+	if !YouTubeURL(query) {
+		target = fmt.Sprintf("ytsearch%d:%s", limit, query)
 	}
 	args := []string{
 		"--ignore-config", "--flat-playlist", "--dump-single-json",
-		"--no-warnings", "--skip-download", "--playlist-end", strconv.Itoa(o.limit),
+		"--no-warnings", "--skip-download", "--playlist-end", strconv.Itoa(limit),
 		"--socket-timeout", "15", "--retries", "1",
 	}
-	if o.browser != "" {
-		args = append(args, "--cookies-from-browser", o.browser)
+	if browser != "" {
+		args = append(args, "--cookies-from-browser", browser)
 	}
 	return append(args, "--", target)
 }
 
-func search(ctx context.Context, query string, o options) ([]video, error) {
-	cmd := exec.CommandContext(ctx, "yt-dlp", searchArgs(query, o)...)
+func Search(ctx context.Context, query string, limit int, browser string) ([]Video, error) {
+	cmd := exec.CommandContext(ctx, "yt-dlp", SearchArgs(query, limit, browser)...)
 	cmd.WaitDelay = 2 * time.Second
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
@@ -127,9 +127,9 @@ func search(ctx context.Context, query string, o options) ([]video, error) {
 		return nil, ctx.Err()
 	}
 	if err != nil {
-		return nil, fmt.Errorf("search failed: %w %s", err, clean(stderr.String()))
+		return nil, fmt.Errorf("search failed: %w %s", err, Clean(stderr.String()))
 	}
-	return parseEntries(output)
+	return ParseEntries(output)
 }
 
 const bindings = `SPACE cycle pause
@@ -153,14 +153,14 @@ q quit
 ESC quit
 `
 
-// preparePlayback creates private files; the caller must clean up after mpv exits.
-func preparePlayback(ctx context.Context, entries []video, browser string) (*exec.Cmd, func(), error) {
+// PreparePlayback creates private files; the caller must clean up after mpv exits.
+func PreparePlayback(ctx context.Context, entries []Video, browser string) (*exec.Cmd, func(), error) {
 	if len(entries) == 0 {
 		return nil, nil, errors.New("nothing to play")
 	}
 	var playlist strings.Builder
 	for _, entry := range entries {
-		if !youtubeURL(entry.URL) {
+		if !YouTubeURL(entry.URL) {
 			return nil, nil, errors.New("invalid YouTube URL in playlist")
 		}
 		fmt.Fprintln(&playlist, entry.URL)

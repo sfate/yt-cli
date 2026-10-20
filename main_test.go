@@ -3,10 +3,32 @@ package main
 import (
 	"context"
 	"errors"
+	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 )
+
+func fakeExecutable(t *testing.T, name, script string) {
+	t.Helper()
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, name), []byte("#!/bin/sh\n"+script), 0700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+}
+
+func TestOptions(t *testing.T) {
+	o, err := parseOptions([]string{"--browser", "chrome:Profile 1", "--limit", "100", "ambient", "live"}, io.Discard)
+	if err != nil || o.query != "ambient live" || o.limit != 100 || o.browser != "chrome:Profile 1" {
+		t.Fatalf("invalid parsed options: %+v, %v", o, err)
+	}
+	if _, err := parseOptions([]string{"--limit", "0"}, io.Discard); err == nil {
+		t.Fatal("accepted invalid limit")
+	}
+}
 
 func TestCheckMPVTimeout(t *testing.T) {
 	fakeExecutable(t, "mpv", "exec sleep 30\n")

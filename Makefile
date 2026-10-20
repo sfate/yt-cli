@@ -30,4 +30,4 @@ doctor: build
 	"$(abspath $(BUILD_OUTPUT))" --doctor
 
 fmt:
-	gofmt -w $(wildcard *.go)
+	gofmt -w $$(find . -name '*.go' -not -path './.git/*')
