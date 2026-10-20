@@ -189,7 +189,7 @@ func PreparePlayback(ctx context.Context, entries []Video, browser string, termi
 		"--vo-tct-256=no", "--profile=sw-fast", "--input-terminal=yes",
 		"--input-default-bindings=no", "--input-cursor=no", "--input-conf=" + inputPath,
 		fmt.Sprintf("--vo-tct-height=%d", videoRows),
-		"--panscan=1",
+		"--panscan=0",
 		"--term-osd=force", "--term-status-msg=${time-pos} / ${duration}",
 		"--term-osd-bar=yes",
 		"--video-osd=no", "--osc=no", "--ytdl=yes",

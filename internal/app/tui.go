@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"time"
@@ -119,7 +120,7 @@ func (m *model) play(entries []media.Video) tea.Cmd {
 		return nil
 	}
 	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
+	cmd.Stderr = io.MultiWriter(os.Stderr, &stderr)
 	// Bubble Tea releases terminal input/output until mpv exits, then restores it.
 	return tea.ExecProcess(cmd, func(err error) tea.Msg {
 		defer cleanup()

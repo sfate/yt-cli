@@ -127,7 +127,7 @@ func TestPreparePlayback(t *testing.T) {
 	if !strings.Contains(args, "--vo=tct") ||
 		!strings.Contains(args, "--input-cursor=no") ||
 		!strings.Contains(args, "--vo-tct-height=28") ||
-		!strings.Contains(args, "--panscan=1") ||
+		!strings.Contains(args, "--panscan=0") ||
 		!strings.Contains(args, "--term-osd=force") ||
 		!strings.Contains(args, "--term-status-msg=${time-pos} / ${duration}") ||
 		!strings.Contains(args, "--term-osd-bar=yes") ||
