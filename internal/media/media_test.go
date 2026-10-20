@@ -137,13 +137,13 @@ func TestPreparePlayback(t *testing.T) {
 		!strings.Contains(args, "--video-margin-ratio-bottom=0.16") ||
 		!strings.Contains(args, "--really-quiet") ||
 		!strings.Contains(args, "--term-osd=no") ||
-		strings.Contains(args, "--term-osd-bar=yes") ||
+		strings.Contains(args, "--term-osd-bar") ||
 		!strings.Contains(args, "--video-osd=no") ||
 		!strings.Contains(args, "--ytdl-raw-options=cookies-from-browser=%18%"+browser) {
 		t.Fatalf("missing renderer or incorrect byte-length escaping: %s", args)
 	}
-	if data, err := os.ReadFile(script); err != nil || !strings.Contains(string(data), "mp.create_osd_overlay") || !strings.Contains(string(data), "time-pos") {
-		t.Fatalf("missing synchronized progress overlay: %v", err)
+	if data, err := os.ReadFile(script); err != nil || !strings.Contains(string(data), "time-pos") || !strings.Contains(string(data), "term-size") || !strings.Contains(string(data), "terminal_width) - #prefix - 4") || !strings.Contains(string(data), "?2026h") || strings.Contains(string(data), "playlist-pos") {
+		t.Fatalf("missing synchronized progress renderer: %v", err)
 	}
 	info, err := os.Stat(playlist)
 	if err != nil || info.Mode().Perm() != 0600 {

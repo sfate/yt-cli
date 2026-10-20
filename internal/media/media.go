@@ -18,14 +18,14 @@ import (
 	"unicode"
 )
 
-//go:embed progress.lua
-var progressScript string
-
 type Video struct {
 	Title   string
 	Channel string
 	URL     string
 }
+
+//go:embed progress.lua
+var progressScript string
 
 type rawVideo struct {
 	ID         string      `json:"id"`
@@ -192,8 +192,9 @@ func PreparePlayback(ctx context.Context, entries []Video, browser string) (*exe
 		"--vo-tct-buffering=frame", "--vo-tct-256=no", "--profile=sw-fast", "--input-terminal=yes",
 		"--input-default-bindings=no", "--input-cursor=no", "--input-conf=" + inputPath,
 		"--vo-tct-width=0", "--vo-tct-height=0", "--panscan=0",
-		"--video-margin-ratio-bottom=0.16", "--script=" + scriptPath,
-		"--video-osd=no", "--term-osd=no", "--really-quiet", "--osc=no", "--ytdl=yes",
+		"--video-margin-ratio-bottom=0.16", "--video-osd=no",
+		"--term-osd=no", "--really-quiet", "--script=" + scriptPath,
+		"--osc=no", "--ytdl=yes",
 		"--ytdl-format=bestvideo[height<=360]+bestaudio/best[height<=360]/best",
 		"--playlist=" + playlistPath,
 	}
