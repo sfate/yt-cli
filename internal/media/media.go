@@ -151,6 +151,10 @@ N playlist-prev
 m cycle mute
 q quit
 ESC quit
+WHEEL_UP ignore
+WHEEL_DOWN ignore
+WHEEL_LEFT ignore
+WHEEL_RIGHT ignore
 `
 
 // PreparePlayback creates private files; the caller must clean up after mpv exits.
@@ -183,8 +187,9 @@ func PreparePlayback(ctx context.Context, entries []Video, browser string, termi
 	args := []string{
 		"--no-config", "--vo=tct", "--vo-tct-algo=half-blocks",
 		"--vo-tct-256=no", "--profile=sw-fast", "--input-terminal=yes",
-		"--input-default-bindings=no", "--input-conf=" + inputPath,
+		"--input-default-bindings=no", "--input-cursor=no", "--input-conf=" + inputPath,
 		fmt.Sprintf("--vo-tct-height=%d", videoRows),
+		"--panscan=1",
 		"--term-osd=force", "--term-status-msg=${time-pos} / ${duration}",
 		"--term-osd-bar=yes",
 		"--osd-level=0", "--osc=no", "--ytdl=yes",

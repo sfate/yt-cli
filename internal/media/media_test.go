@@ -118,12 +118,16 @@ func TestPreparePlayback(t *testing.T) {
 	}
 	conf, err := os.ReadFile(filepath.Join(filepath.Dir(playlist), "input.conf"))
 	if err != nil || !strings.Contains(string(conf), "SPACE cycle pause") ||
-		!strings.Contains(string(conf), "ESC quit") {
+		!strings.Contains(string(conf), "ESC quit") ||
+		!strings.Contains(string(conf), "WHEEL_UP ignore") ||
+		!strings.Contains(string(conf), "WHEEL_DOWN ignore") {
 		t.Fatalf("missing bindings: %s, %v", conf, err)
 	}
 	args := strings.Join(cmd.Args, "\n")
 	if !strings.Contains(args, "--vo=tct") ||
+		!strings.Contains(args, "--input-cursor=no") ||
 		!strings.Contains(args, "--vo-tct-height=28") ||
+		!strings.Contains(args, "--panscan=1") ||
 		!strings.Contains(args, "--term-osd=force") ||
 		!strings.Contains(args, "--term-status-msg=${time-pos} / ${duration}") ||
 		!strings.Contains(args, "--term-osd-bar=yes") ||
