@@ -6,7 +6,7 @@ uses true-color Unicode half-blocks, which also work in iTerm2.
 
 ## Usage
 
-Requires Go 1.25+ to build, mpv with `tct` output, and a current yt-dlp.
+Requires Go 1.27+ to build, mpv with `tct` output, and a current yt-dlp.
 On macOS:
 
 ```sh
