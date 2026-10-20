@@ -63,6 +63,9 @@ remain available after playback; the queue is a session-only list, not consumed.
 The default extraction limit is 25; use `--limit 100` for larger playlists
 (maximum 500). Search stays cancellable while yt-dlp is running.
 
+During playback, mpv reserves two bottom terminal rows for elapsed/total time
+and its text progress bar. The video is sized to the rows above them.
+
 ## Browser session
 
 Sign in to YouTube in your normal browser, then explicitly opt in:

@@ -107,9 +107,13 @@ func TestPreparePlayback(t *testing.T) {
 	}
 	defer cleanup()
 	var playlist string
+	var script string
 	for _, arg := range cmd.Args {
 		if strings.HasPrefix(arg, "--playlist=") {
 			playlist = strings.TrimPrefix(arg, "--playlist=")
+		}
+		if strings.HasPrefix(arg, "--script=") {
+			script = strings.TrimPrefix(arg, "--script=")
 		}
 	}
 	data, err := os.ReadFile(playlist)
@@ -118,13 +122,28 @@ func TestPreparePlayback(t *testing.T) {
 	}
 	conf, err := os.ReadFile(filepath.Join(filepath.Dir(playlist), "input.conf"))
 	if err != nil || !strings.Contains(string(conf), "SPACE cycle pause") ||
-		!strings.Contains(string(conf), "ESC quit") {
+		!strings.Contains(string(conf), "ESC quit") ||
+		!strings.Contains(string(conf), "WHEEL_UP ignore") ||
+		!strings.Contains(string(conf), "WHEEL_DOWN ignore") {
 		t.Fatalf("missing bindings: %s, %v", conf, err)
 	}
 	args := strings.Join(cmd.Args, "\n")
 	if !strings.Contains(args, "--vo=tct") ||
+		!strings.Contains(args, "--vo-tct-buffering=frame") ||
+		!strings.Contains(args, "--input-cursor=no") ||
+		!strings.Contains(args, "--vo-tct-width=0") ||
+		!strings.Contains(args, "--vo-tct-height=0") ||
+		!strings.Contains(args, "--panscan=0") ||
+		!strings.Contains(args, "--video-margin-ratio-bottom=0.16") ||
+		!strings.Contains(args, "--really-quiet") ||
+		!strings.Contains(args, "--term-osd=no") ||
+		strings.Contains(args, "--term-osd-bar") ||
+		!strings.Contains(args, "--video-osd=no") ||
 		!strings.Contains(args, "--ytdl-raw-options=cookies-from-browser=%18%"+browser) {
 		t.Fatalf("missing renderer or incorrect byte-length escaping: %s", args)
+	}
+	if data, err := os.ReadFile(script); err != nil || !strings.Contains(string(data), "time-pos") || !strings.Contains(string(data), "term-size") || !strings.Contains(string(data), "terminal_width) - #prefix - 4") || !strings.Contains(string(data), "?2026h") || strings.Contains(string(data), "playlist-pos") {
+		t.Fatalf("missing synchronized progress renderer: %v", err)
 	}
 	info, err := os.Stat(playlist)
 	if err != nil || info.Mode().Perm() != 0600 {

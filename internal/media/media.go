@@ -3,6 +3,7 @@ package media
 import (
 	"bytes"
 	"context"
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -22,6 +23,9 @@ type Video struct {
 	Channel string
 	URL     string
 }
+
+//go:embed progress.lua
+var progressScript string
 
 type rawVideo struct {
 	ID         string      `json:"id"`
@@ -151,6 +155,10 @@ N playlist-prev
 m cycle mute
 q quit
 ESC quit
+WHEEL_UP ignore
+WHEEL_DOWN ignore
+WHEEL_LEFT ignore
+WHEEL_RIGHT ignore
 `
 
 // PreparePlayback creates private files; the caller must clean up after mpv exits.
@@ -170,18 +178,23 @@ func PreparePlayback(ctx context.Context, entries []Video, browser string) (*exe
 		return nil, nil, err
 	}
 	cleanup := func() { _ = os.RemoveAll(dir) }
-	inputPath, playlistPath := filepath.Join(dir, "input.conf"), filepath.Join(dir, "playlist.m3u")
-	for path, data := range map[string]string{inputPath: bindings, playlistPath: playlist.String()} {
+	inputPath, playlistPath, scriptPath := filepath.Join(dir, "input.conf"), filepath.Join(dir, "playlist.m3u"), filepath.Join(dir, "progress.lua")
+	for path, data := range map[string]string{
+		inputPath: bindings, playlistPath: playlist.String(), scriptPath: progressScript,
+	} {
 		if err := os.WriteFile(path, []byte(data), 0600); err != nil {
 			cleanup()
 			return nil, nil, err
 		}
 	}
 	args := []string{
-		"--no-config", "--really-quiet", "--vo=tct", "--vo-tct-algo=half-blocks",
-		"--vo-tct-256=no", "--profile=sw-fast", "--input-terminal=yes",
-		"--input-default-bindings=no", "--input-conf=" + inputPath,
-		"--osd-level=0", "--osc=no", "--ytdl=yes",
+		"--no-config", "--vo=tct", "--vo-tct-algo=half-blocks",
+		"--vo-tct-buffering=frame", "--vo-tct-256=no", "--profile=sw-fast", "--input-terminal=yes",
+		"--input-default-bindings=no", "--input-cursor=no", "--input-conf=" + inputPath,
+		"--vo-tct-width=0", "--vo-tct-height=0", "--panscan=0",
+		"--video-margin-ratio-bottom=0.16", "--video-osd=no",
+		"--term-osd=no", "--really-quiet", "--script=" + scriptPath,
+		"--osc=no", "--ytdl=yes",
 		"--ytdl-format=bestvideo[height<=360]+bestaudio/best[height<=360]/best",
 		"--playlist=" + playlistPath,
 	}

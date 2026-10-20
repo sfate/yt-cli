@@ -1,10 +1,10 @@
 package app
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -112,13 +112,13 @@ func (m *model) play(entries []media.Video) tea.Cmd {
 		m.status = "Playback failed: " + media.Clean(err.Error())
 		return nil
 	}
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
+	// Keep playback diagnostics visible in the terminal.
+	cmd.Stderr = os.Stderr
 	// Bubble Tea releases terminal input/output until mpv exits, then restores it.
 	return tea.ExecProcess(cmd, func(err error) tea.Msg {
 		defer cleanup()
 		if err != nil {
-			err = fmt.Errorf("%w %s", err, media.Clean(stderr.String()))
+			err = fmt.Errorf("mpv exited: %w", err)
 		}
 		return playbackDone{err: err}
 	})
