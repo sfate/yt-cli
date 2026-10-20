@@ -3,6 +3,7 @@
 
 BINARY_NAME ?= yt-cli
 BUILD_OUTPUT ?= bin/$(BINARY_NAME)
+DEV_BUILD_OUTPUT ?= $(HOME)/.local/$(BUILD_OUTPUT)
 TEST_DIR ?= ./...
 TEST_CASE ?= .
 GOLANGCI_LINT_VERSION ?= v2.14.0
@@ -21,6 +22,10 @@ build:
 	mkdir -p "$(dir $(BUILD_OUTPUT))"
 	go build -mod=readonly -o "$(BUILD_OUTPUT)" .
 
+dev-build: build
+	mkdir -p "$(dir $(DEV_BUILD_OUTPUT))"
+	ln -sf "$(PWD)/$(BUILD_OUTPUT)" "$(DEV_BUILD_OUTPUT)"
+
 ci: lint audit test
 
 run: build
@@ -30,4 +35,4 @@ doctor: build
 	"$(abspath $(BUILD_OUTPUT))" --doctor
 
 fmt:
-	gofmt -w $(wildcard *.go)
+	gofmt -w $$(find . -name '*.go' -not -path './.git/*')

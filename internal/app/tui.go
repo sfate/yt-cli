@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"bytes"
@@ -10,11 +10,19 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/sfate/yt-cli/internal/media"
 )
+
+// Options configures the terminal app.
+type Options struct {
+	Browser string
+	Limit   int
+	Query   string
+}
 
 type searchDone struct {
 	id      int
-	entries []video
+	entries []media.Video
 	err     error
 }
 
@@ -22,9 +30,9 @@ type playbackDone struct{ err error }
 
 type model struct {
 	ctx           context.Context
-	options       options
-	results       []video
-	queue         []video
+	options       Options
+	results       []media.Video
+	queue         []media.Video
 	selected      int
 	inQueue       bool
 	help          bool
@@ -36,7 +44,15 @@ type model struct {
 	searchCancel  context.CancelFunc
 }
 
-func newModel(ctx context.Context, o options) *model {
+// Run starts the interactive terminal app.
+func Run(ctx context.Context, o Options) error {
+	m := newModel(ctx, o)
+	defer m.cancelSearch()
+	_, err := tea.NewProgram(m).Run()
+	return err
+}
+
+func newModel(ctx context.Context, o Options) *model {
 	return &model{
 		ctx: ctx, options: o, width: 80, height: 24,
 		status: "Press / to search or paste a YouTube video/playlist URL.",
@@ -44,13 +60,13 @@ func newModel(ctx context.Context, o options) *model {
 }
 
 func (m *model) Init() tea.Cmd {
-	if m.options.query != "" {
-		return m.startSearch(m.options.query)
+	if m.options.Query != "" {
+		return m.startSearch(m.options.Query)
 	}
 	return nil
 }
 
-func (m *model) entries() []video {
+func (m *model) entries() []media.Video {
 	if m.inQueue {
 		return m.queue
 	}
@@ -78,22 +94,22 @@ func (m *model) startSearch(query string) tea.Cmd {
 	ctx, cancel := context.WithTimeout(m.ctx, 90*time.Second)
 	m.searchCancel = cancel
 	id, o := m.searchID, m.options
-	m.status = "Loading " + clean(query) + " — Esc cancels"
+	m.status = "Loading " + media.Clean(query) + " — Esc cancels"
 	return func() tea.Msg {
 		defer cancel()
-		entries, err := search(ctx, query, o)
+		entries, err := media.Search(ctx, query, o.Limit, o.Browser)
 		return searchDone{id: id, entries: entries, err: err}
 	}
 }
 
-func (m *model) play(entries []video) tea.Cmd {
+func (m *model) play(entries []media.Video) tea.Cmd {
 	if len(entries) == 0 {
 		m.status = "Nothing to play. Search or add videos to the queue first."
 		return nil
 	}
-	cmd, cleanup, err := preparePlayback(m.ctx, entries, m.options.browser)
+	cmd, cleanup, err := media.PreparePlayback(m.ctx, entries, m.options.Browser)
 	if err != nil {
-		m.status = "Playback failed: " + clean(err.Error())
+		m.status = "Playback failed: " + media.Clean(err.Error())
 		return nil
 	}
 	var stderr bytes.Buffer
@@ -102,7 +118,7 @@ func (m *model) play(entries []video) tea.Cmd {
 	return tea.ExecProcess(cmd, func(err error) tea.Msg {
 		defer cleanup()
 		if err != nil {
-			err = fmt.Errorf("%w %s", err, clean(stderr.String()))
+			err = fmt.Errorf("%w %s", err, media.Clean(stderr.String()))
 		}
 		return playbackDone{err: err}
 	})
@@ -121,19 +137,19 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		case errors.Is(msg.err, context.DeadlineExceeded):
 			m.status = "Search timed out. Try again or check browser-session access."
 		case msg.err != nil:
-			m.status = clean(msg.err.Error())
+			m.status = media.Clean(msg.err.Error())
 		default:
 			m.results, m.selected, m.inQueue = msg.entries, 0, false
-			m.status = fmt.Sprintf("%d results (limit %d). Enter plays from selection.", len(m.results), m.options.limit)
+			m.status = fmt.Sprintf("%d results (limit %d). Enter plays from selection.", len(m.results), m.options.Limit)
 		}
 	case playbackDone:
 		m.status = "Back from playback."
 		if msg.err != nil {
-			m.status = "Playback failed: " + clean(msg.err.Error())
+			m.status = "Playback failed: " + media.Clean(msg.err.Error())
 		}
 	case tea.PasteMsg:
 		if m.editing {
-			m.query += clean(msg.Content)
+			m.query += media.Clean(msg.Content)
 		}
 	case tea.KeyPressMsg:
 		key := msg.String()
@@ -156,7 +172,7 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 			case "ctrl+u":
 				m.query = ""
 			default:
-				m.query += clean(msg.Text)
+				m.query += media.Clean(msg.Text)
 			}
 			return m, nil
 		}

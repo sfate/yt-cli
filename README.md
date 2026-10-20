@@ -80,7 +80,13 @@ as account credentials.
 
 ## Implementation and current limits
 
-Go with Bubble Tea handles navigation. yt-dlp supplies metadata.
+The root package parses command-line options and checks runtime dependencies.
+`internal/app` handles terminal navigation and hands playback to mpv;
+`internal/media` handles yt-dlp search, result parsing, YouTube URL validation,
+and temporary mpv playlists. This keeps terminal state management, external
+media tools, and process startup in separate packages.
+
+Bubble Tea handles navigation. yt-dlp supplies metadata.
 mpv owns decoding, buffering, audio synchronization, and terminal rendering.
 The TUI suspends while mpv owns the pane, avoiding two competing screen writers.
 Subprocesses use argument arrays, without a shell. Remote titles are stripped

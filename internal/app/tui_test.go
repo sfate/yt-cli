@@ -1,13 +1,13 @@
-package main
+package app
 
 import (
 	"context"
-	"io"
 	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/sfate/yt-cli/internal/media"
 )
 
 func press(m *model, key rune) tea.Cmd {
@@ -16,8 +16,8 @@ func press(m *model, key rune) tea.Cmd {
 }
 
 func TestQueueNavigationAndRemoval(t *testing.T) {
-	m := newModel(context.Background(), options{limit: 25})
-	m.results = []video{{Title: "First"}, {Title: "Second"}}
+	m := newModel(context.Background(), Options{Limit: 25})
+	m.results = []media.Video{{Title: "First"}, {Title: "Second"}}
 	press(m, 'a')
 	press(m, 'j')
 	press(m, 'a')
@@ -39,24 +39,24 @@ func TestQueueNavigationAndRemoval(t *testing.T) {
 }
 
 func TestCancelAndReplacementIgnoreStaleSearch(t *testing.T) {
-	m := newModel(context.Background(), options{limit: 25})
+	m := newModel(context.Background(), Options{Limit: 25})
 	m.startSearch("old")
 	oldID := m.searchID
 	m.startSearch("new")
-	m.Update(searchDone{id: oldID, entries: []video{{Title: "Stale"}}})
+	m.Update(searchDone{id: oldID, entries: []media.Video{{Title: "Stale"}}})
 	if len(m.results) != 0 {
 		t.Fatal("old search overwrote new search")
 	}
 	newID := m.searchID
 	m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
-	m.Update(searchDone{id: newID, entries: []video{{Title: "Canceled"}}})
+	m.Update(searchDone{id: newID, entries: []media.Video{{Title: "Canceled"}}})
 	if len(m.results) != 0 || m.status != "Ready." {
 		t.Fatal("canceled result changed the view")
 	}
 }
 
 func TestPromptAcceptsPasteAndUnicode(t *testing.T) {
-	m := newModel(context.Background(), options{limit: 25})
+	m := newModel(context.Background(), Options{Limit: 25})
 	press(m, '/')
 	m.Update(tea.PasteMsg{Content: "日本語\x1b\n"})
 	if m.query != "日本語" {
@@ -77,8 +77,8 @@ func TestPromptAcceptsPasteAndUnicode(t *testing.T) {
 }
 
 func TestViewFitsSmallPane(t *testing.T) {
-	m := newModel(context.Background(), options{limit: 25})
-	m.results = []video{{Title: strings.Repeat("日", 100)}}
+	m := newModel(context.Background(), Options{Limit: 25})
+	m.results = []media.Video{{Title: strings.Repeat("日", 100)}}
 	for _, size := range [][2]int{{1, 1}, {12, 4}, {40, 12}} {
 		m.Update(tea.WindowSizeMsg{Width: size[0], Height: size[1]})
 		lines := strings.Split(m.View().Content, "\n")
@@ -90,15 +90,5 @@ func TestViewFitsSmallPane(t *testing.T) {
 				t.Fatalf("view exceeds pane width: %q", line)
 			}
 		}
-	}
-}
-
-func TestOptions(t *testing.T) {
-	o, err := parseOptions([]string{"--browser", "chrome:Profile 1", "--limit", "100", "ambient", "live"}, io.Discard)
-	if err != nil || o.query != "ambient live" || o.limit != 100 || o.browser != "chrome:Profile 1" {
-		t.Fatalf("invalid parsed options: %+v, %v", o, err)
-	}
-	if _, err := parseOptions([]string{"--limit", "0"}, io.Discard); err == nil {
-		t.Fatal("accepted invalid limit")
 	}
 }

@@ -1,4 +1,4 @@
-package main
+package media
 
 import (
 	"context"
@@ -16,7 +16,7 @@ func TestParseEntries(t *testing.T) {
 		{"id":"abcdefghijk","title":"Track\n\u001b]52;clipboard\u0007","uploader":"Artist"},
 		{"id":"../../bad","url":"https://evil.example/video"},
 		{"url":"https://www.youtube.com/watch?v=12345678901","title":"Second"}]}`)
-	entries, err := parseEntries(data)
+	entries, err := ParseEntries(data)
 	if err != nil || len(entries) != 2 {
 		t.Fatalf("got %v, %v", entries, err)
 	}
@@ -36,13 +36,13 @@ func TestParseSingleAndEmpty(t *testing.T) {
 		{`{"id":"abcdefghijk"}`, 1},
 		{`{"entries":[]}`, 0},
 	} {
-		entries, err := parseEntries([]byte(tc.input))
+		entries, err := ParseEntries([]byte(tc.input))
 		if err != nil || len(entries) != tc.count {
 			t.Fatalf("%s: got %v, %v", tc.input, entries, err)
 		}
 	}
 	for _, input := range []string{"null", "not json", `{"entries":"invalid"}`} {
-		if _, err := parseEntries([]byte(input)); err == nil {
+		if _, err := ParseEntries([]byte(input)); err == nil {
 			t.Errorf("accepted invalid document %q", input)
 		}
 	}
@@ -53,32 +53,32 @@ func TestYouTubeURL(t *testing.T) {
 		"https://youtube.com.evil.test/watch?v=x", "file:///tmp/x",
 		"https://youtube.com@evil.test/x", "https://youtube.com/x%0ahttps://evil.test",
 	} {
-		if youtubeURL(target) {
+		if YouTubeURL(target) {
 			t.Errorf("accepted %q", target)
 		}
 	}
-	if !youtubeURL("https://youtu.be/abcdefghijk") {
+	if !YouTubeURL("https://youtu.be/abcdefghijk") {
 		t.Fatal("rejected valid short URL")
 	}
 }
 
 func TestSearchArgsLiteralQueryAndBrowser(t *testing.T) {
 	query := `music; $(touch /tmp/not-real) "quoted"`
-	args := searchArgs(query, options{limit: 25})
+	args := SearchArgs(query, 25, "")
 	if !reflect.DeepEqual(args[len(args)-2:], []string{"--", "ytsearch25:" + query}) {
 		t.Fatalf("query was not passed literally: %q", args)
 	}
 	url := "https://www.youtube.com/playlist?list=PL123"
-	args = searchArgs(url, options{limit: 100, browser: "chrome:Profile 1"})
+	args = SearchArgs(url, 100, "chrome:Profile 1")
 	if args[len(args)-1] != url || args[len(args)-3] != "chrome:Profile 1" {
 		t.Fatalf("unexpected playlist/browser arguments: %q", args)
 	}
 }
 
 func TestPreparePlayback(t *testing.T) {
-	entries := []video{{URL: "https://youtu.be/abcdefghijk"}, {URL: "https://youtu.be/12345678901"}}
+	entries := []Video{{URL: "https://youtu.be/abcdefghijk"}, {URL: "https://youtu.be/12345678901"}}
 	browser := "firefox:profile,é"
-	cmd, cleanup, err := preparePlayback(context.Background(), entries, browser)
+	cmd, cleanup, err := PreparePlayback(context.Background(), entries, browser)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,8 +114,8 @@ func TestPreparePlayback(t *testing.T) {
 }
 
 func TestPreparePlaybackRejectsInvalidQueue(t *testing.T) {
-	for _, entries := range [][]video{nil, {{URL: "https://youtube.com/x\nfile:///tmp/x"}}} {
-		if _, _, err := preparePlayback(context.Background(), entries, ""); err == nil {
+	for _, entries := range [][]Video{nil, {{URL: "https://youtube.com/x\nfile:///tmp/x"}}} {
+		if _, _, err := PreparePlayback(context.Background(), entries, ""); err == nil {
 			t.Fatal("accepted empty or invalid queue")
 		}
 	}
@@ -132,7 +132,7 @@ func fakeExecutable(t *testing.T, name, script string) {
 
 func TestSearchSubprocessAndCancellation(t *testing.T) {
 	fakeExecutable(t, "yt-dlp", `printf '%s' '{"entries":[{"id":"abcdefghijk","title":"Track"}]}'`)
-	entries, err := search(context.Background(), "music", options{limit: 25})
+	entries, err := Search(context.Background(), "music", 25, "")
 	if err != nil || len(entries) != 1 {
 		t.Fatalf("subprocess search failed: %v, %v", entries, err)
 	}
@@ -140,7 +140,7 @@ func TestSearchSubprocessAndCancellation(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 	start := time.Now()
-	_, err = search(ctx, "music", options{limit: 25})
+	_, err = Search(ctx, "music", 25, "")
 	if !errors.Is(err, context.DeadlineExceeded) || time.Since(start) > 3*time.Second {
 		t.Fatalf("search failed to cancel promptly: %v", err)
 	}
