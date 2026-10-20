@@ -125,6 +125,7 @@ func TestPreparePlayback(t *testing.T) {
 	}
 	args := strings.Join(cmd.Args, "\n")
 	if !strings.Contains(args, "--vo=tct") ||
+		!strings.Contains(args, "--vo-tct-buffering=frame") ||
 		!strings.Contains(args, "--input-cursor=no") ||
 		!strings.Contains(args, "--vo-tct-width=100") ||
 		!strings.Contains(args, "--vo-tct-height=28") ||

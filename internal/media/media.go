@@ -187,7 +187,7 @@ func PreparePlayback(ctx context.Context, entries []Video, browser string, termi
 	videoCols := max(1, terminalCols)
 	args := []string{
 		"--no-config", "--vo=tct", "--vo-tct-algo=half-blocks",
-		"--vo-tct-256=no", "--profile=sw-fast", "--input-terminal=yes",
+		"--vo-tct-buffering=frame", "--vo-tct-256=no", "--profile=sw-fast", "--input-terminal=yes",
 		"--input-default-bindings=no", "--input-cursor=no", "--input-conf=" + inputPath,
 		fmt.Sprintf("--vo-tct-width=%d", videoCols), fmt.Sprintf("--vo-tct-height=%d", videoRows),
 		"--panscan=0",
