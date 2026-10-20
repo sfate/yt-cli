@@ -101,7 +101,7 @@ func TestSearchArgsLiteralQueryAndBrowser(t *testing.T) {
 func TestPreparePlayback(t *testing.T) {
 	entries := []Video{{URL: "https://youtu.be/abcdefghijk"}, {URL: "https://youtu.be/12345678901"}}
 	browser := "firefox:profile,é"
-	cmd, cleanup, err := PreparePlayback(context.Background(), entries, browser, 30)
+	cmd, cleanup, err := PreparePlayback(context.Background(), entries, browser, 100, 30)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,6 +126,7 @@ func TestPreparePlayback(t *testing.T) {
 	args := strings.Join(cmd.Args, "\n")
 	if !strings.Contains(args, "--vo=tct") ||
 		!strings.Contains(args, "--input-cursor=no") ||
+		!strings.Contains(args, "--vo-tct-width=100") ||
 		!strings.Contains(args, "--vo-tct-height=28") ||
 		!strings.Contains(args, "--panscan=0") ||
 		!strings.Contains(args, "--term-osd=force") ||
@@ -148,7 +149,7 @@ func TestPreparePlayback(t *testing.T) {
 
 func TestPreparePlaybackRejectsInvalidQueue(t *testing.T) {
 	for _, entries := range [][]Video{nil, {{URL: "https://youtube.com/x\nfile:///tmp/x"}}} {
-		if _, _, err := PreparePlayback(context.Background(), entries, "", 24); err == nil {
+		if _, _, err := PreparePlayback(context.Background(), entries, "", 80, 24); err == nil {
 			t.Fatal("accepted empty or invalid queue")
 		}
 	}

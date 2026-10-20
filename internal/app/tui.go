@@ -1,11 +1,9 @@
 package app
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 	"time"
@@ -110,22 +108,24 @@ func (m *model) play(entries []media.Video) tea.Cmd {
 		m.status = "Nothing to play. Search or add videos to the queue first."
 		return nil
 	}
-	_, terminalRows, sizeErr := term.GetSize(os.Stdout.Fd())
+	terminalCols, terminalRows, sizeErr := term.GetSize(os.Stdout.Fd())
 	if sizeErr != nil {
+		terminalCols = 80
 		terminalRows = 24
 	}
-	cmd, cleanup, err := media.PreparePlayback(m.ctx, entries, m.options.Browser, terminalRows)
+	cmd, cleanup, err := media.PreparePlayback(m.ctx, entries, m.options.Browser, terminalCols, terminalRows)
 	if err != nil {
 		m.status = "Playback failed: " + media.Clean(err.Error())
 		return nil
 	}
-	var stderr bytes.Buffer
-	cmd.Stderr = io.MultiWriter(os.Stderr, &stderr)
+	// Keep stderr attached directly to the terminal so mpv can detect the TTY
+	// and render its terminal status line and progress bar.
+	cmd.Stderr = os.Stderr
 	// Bubble Tea releases terminal input/output until mpv exits, then restores it.
 	return tea.ExecProcess(cmd, func(err error) tea.Msg {
 		defer cleanup()
 		if err != nil {
-			err = fmt.Errorf("%w %s", err, media.Clean(stderr.String()))
+			err = fmt.Errorf("mpv exited: %w", err)
 		}
 		return playbackDone{err: err}
 	})

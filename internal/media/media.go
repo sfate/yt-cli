@@ -158,7 +158,7 @@ WHEEL_RIGHT ignore
 `
 
 // PreparePlayback creates private files; the caller must clean up after mpv exits.
-func PreparePlayback(ctx context.Context, entries []Video, browser string, terminalRows int) (*exec.Cmd, func(), error) {
+func PreparePlayback(ctx context.Context, entries []Video, browser string, terminalCols, terminalRows int) (*exec.Cmd, func(), error) {
 	if len(entries) == 0 {
 		return nil, nil, errors.New("nothing to play")
 	}
@@ -184,11 +184,12 @@ func PreparePlayback(ctx context.Context, entries []Video, browser string, termi
 		}
 	}
 	videoRows := max(1, terminalRows-2)
+	videoCols := max(1, terminalCols)
 	args := []string{
 		"--no-config", "--vo=tct", "--vo-tct-algo=half-blocks",
 		"--vo-tct-256=no", "--profile=sw-fast", "--input-terminal=yes",
 		"--input-default-bindings=no", "--input-cursor=no", "--input-conf=" + inputPath,
-		fmt.Sprintf("--vo-tct-height=%d", videoRows),
+		fmt.Sprintf("--vo-tct-width=%d", videoCols), fmt.Sprintf("--vo-tct-height=%d", videoRows),
 		"--panscan=0",
 		"--term-osd=force", "--term-status-msg=${time-pos} / ${duration}",
 		"--term-osd-bar=yes",
