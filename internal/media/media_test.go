@@ -101,15 +101,19 @@ func TestSearchArgsLiteralQueryAndBrowser(t *testing.T) {
 func TestPreparePlayback(t *testing.T) {
 	entries := []Video{{URL: "https://youtu.be/abcdefghijk"}, {URL: "https://youtu.be/12345678901"}}
 	browser := "firefox:profile,é"
-	cmd, cleanup, err := PreparePlayback(context.Background(), entries, browser, 100, 30)
+	cmd, cleanup, err := PreparePlayback(context.Background(), entries, browser)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer cleanup()
 	var playlist string
+	var script string
 	for _, arg := range cmd.Args {
 		if strings.HasPrefix(arg, "--playlist=") {
 			playlist = strings.TrimPrefix(arg, "--playlist=")
+		}
+		if strings.HasPrefix(arg, "--script=") {
+			script = strings.TrimPrefix(arg, "--script=")
 		}
 	}
 	data, err := os.ReadFile(playlist)
@@ -127,16 +131,19 @@ func TestPreparePlayback(t *testing.T) {
 	if !strings.Contains(args, "--vo=tct") ||
 		!strings.Contains(args, "--vo-tct-buffering=frame") ||
 		!strings.Contains(args, "--input-cursor=no") ||
-		!strings.Contains(args, "--vo-tct-width=100") ||
-		!strings.Contains(args, "--vo-tct-height=28") ||
+		!strings.Contains(args, "--vo-tct-width=0") ||
+		!strings.Contains(args, "--vo-tct-height=0") ||
 		!strings.Contains(args, "--panscan=0") ||
-		!strings.Contains(args, "--term-osd=force") ||
-		!strings.Contains(args, "--term-status-msg=${time-pos} / ${duration}") ||
-		!strings.Contains(args, "--term-osd-bar=yes") ||
+		!strings.Contains(args, "--video-margin-ratio-bottom=0.16") ||
+		!strings.Contains(args, "--really-quiet") ||
+		!strings.Contains(args, "--term-osd=no") ||
+		strings.Contains(args, "--term-osd-bar=yes") ||
 		!strings.Contains(args, "--video-osd=no") ||
-		strings.Contains(args, "--osd-level=0") ||
 		!strings.Contains(args, "--ytdl-raw-options=cookies-from-browser=%18%"+browser) {
 		t.Fatalf("missing renderer or incorrect byte-length escaping: %s", args)
+	}
+	if data, err := os.ReadFile(script); err != nil || !strings.Contains(string(data), "mp.create_osd_overlay") || !strings.Contains(string(data), "time-pos") {
+		t.Fatalf("missing synchronized progress overlay: %v", err)
 	}
 	info, err := os.Stat(playlist)
 	if err != nil || info.Mode().Perm() != 0600 {
@@ -150,7 +157,7 @@ func TestPreparePlayback(t *testing.T) {
 
 func TestPreparePlaybackRejectsInvalidQueue(t *testing.T) {
 	for _, entries := range [][]Video{nil, {{URL: "https://youtube.com/x\nfile:///tmp/x"}}} {
-		if _, _, err := PreparePlayback(context.Background(), entries, "", 80, 24); err == nil {
+		if _, _, err := PreparePlayback(context.Background(), entries, ""); err == nil {
 			t.Fatal("accepted empty or invalid queue")
 		}
 	}

@@ -3,6 +3,7 @@ package media
 import (
 	"bytes"
 	"context"
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,6 +17,9 @@ import (
 	"time"
 	"unicode"
 )
+
+//go:embed progress.lua
+var progressScript string
 
 type Video struct {
 	Title   string
@@ -158,7 +162,7 @@ WHEEL_RIGHT ignore
 `
 
 // PreparePlayback creates private files; the caller must clean up after mpv exits.
-func PreparePlayback(ctx context.Context, entries []Video, browser string, terminalCols, terminalRows int) (*exec.Cmd, func(), error) {
+func PreparePlayback(ctx context.Context, entries []Video, browser string) (*exec.Cmd, func(), error) {
 	if len(entries) == 0 {
 		return nil, nil, errors.New("nothing to play")
 	}
@@ -174,26 +178,22 @@ func PreparePlayback(ctx context.Context, entries []Video, browser string, termi
 		return nil, nil, err
 	}
 	cleanup := func() { _ = os.RemoveAll(dir) }
-	inputPath, playlistPath := filepath.Join(dir, "input.conf"), filepath.Join(dir, "playlist.m3u")
+	inputPath, playlistPath, scriptPath := filepath.Join(dir, "input.conf"), filepath.Join(dir, "playlist.m3u"), filepath.Join(dir, "progress.lua")
 	for path, data := range map[string]string{
-		inputPath: bindings, playlistPath: playlist.String(),
+		inputPath: bindings, playlistPath: playlist.String(), scriptPath: progressScript,
 	} {
 		if err := os.WriteFile(path, []byte(data), 0600); err != nil {
 			cleanup()
 			return nil, nil, err
 		}
 	}
-	videoRows := max(1, terminalRows-2)
-	videoCols := max(1, terminalCols)
 	args := []string{
 		"--no-config", "--vo=tct", "--vo-tct-algo=half-blocks",
 		"--vo-tct-buffering=frame", "--vo-tct-256=no", "--profile=sw-fast", "--input-terminal=yes",
 		"--input-default-bindings=no", "--input-cursor=no", "--input-conf=" + inputPath,
-		fmt.Sprintf("--vo-tct-width=%d", videoCols), fmt.Sprintf("--vo-tct-height=%d", videoRows),
-		"--panscan=0",
-		"--term-osd=force", "--term-status-msg=${time-pos} / ${duration}",
-		"--term-osd-bar=yes",
-		"--video-osd=no", "--osc=no", "--ytdl=yes",
+		"--vo-tct-width=0", "--vo-tct-height=0", "--panscan=0",
+		"--video-margin-ratio-bottom=0.16", "--script=" + scriptPath,
+		"--video-osd=no", "--term-osd=no", "--really-quiet", "--osc=no", "--ytdl=yes",
 		"--ytdl-format=bestvideo[height<=360]+bestaudio/best[height<=360]/best",
 		"--playlist=" + playlistPath,
 	}

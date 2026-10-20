@@ -10,7 +10,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/charmbracelet/x/term"
 	"github.com/sfate/yt-cli/internal/media"
 )
 
@@ -108,18 +107,12 @@ func (m *model) play(entries []media.Video) tea.Cmd {
 		m.status = "Nothing to play. Search or add videos to the queue first."
 		return nil
 	}
-	terminalCols, terminalRows, sizeErr := term.GetSize(os.Stdout.Fd())
-	if sizeErr != nil {
-		terminalCols = 80
-		terminalRows = 24
-	}
-	cmd, cleanup, err := media.PreparePlayback(m.ctx, entries, m.options.Browser, terminalCols, terminalRows)
+	cmd, cleanup, err := media.PreparePlayback(m.ctx, entries, m.options.Browser)
 	if err != nil {
 		m.status = "Playback failed: " + media.Clean(err.Error())
 		return nil
 	}
-	// Keep stderr attached directly to the terminal so mpv can detect the TTY
-	// and render its terminal status line and progress bar.
+	// Keep playback diagnostics visible in the terminal.
 	cmd.Stderr = os.Stderr
 	// Bubble Tea releases terminal input/output until mpv exits, then restores it.
 	return tea.ExecProcess(cmd, func(err error) tea.Msg {
