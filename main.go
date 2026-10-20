@@ -54,11 +54,27 @@ func checkDependencies(ctx context.Context) error {
 	if len(missing) > 0 {
 		return fmt.Errorf("missing: %s\nOn macOS: brew install mpv yt-dlp", strings.Join(missing, ", "))
 	}
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	output, err := exec.CommandContext(ctx, "mpv", "--no-config", "--vo=help").CombinedOutput()
+	return checkMPV(ctx)
+}
+
+func checkMPV(ctx context.Context) error {
+	cmd := exec.CommandContext(ctx, "mpv", "--no-config", "--vo=help")
+	cmd.WaitDelay = 2 * time.Second
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("checking mpv video outputs: %w", err)
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			return fmt.Errorf("mpv startup check timed out: %w\nTry running %q --no-config --vo=help directly, then retry make doctor", ctx.Err(), cmd.Path)
+		}
+		if ctx.Err() != nil {
+			return fmt.Errorf("mpv startup check canceled: %w", ctx.Err())
+		}
+		detail := ""
+		if text := strings.TrimSpace(clean(string(output))); text != "" {
+			detail = "\nmpv output: " + text
+		}
+		return fmt.Errorf("mpv startup check failed (%s): %w%s\nTry running %q --no-config --vo=help directly", cmd.Path, err, detail, cmd.Path)
 	}
 	if !regexp.MustCompile(`\btct\b`).Match(output) {
 		return errors.New("this mpv build lacks tct video output; install a build with tct")
